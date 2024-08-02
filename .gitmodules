@@ -1,6 +1,8 @@
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/kmu-wink/wink-official
+	branch = master
 [submodule "backend"]
 	path = backend
 	url = https://github.com/kmu-wink/wink-official-backend
+	branch = master

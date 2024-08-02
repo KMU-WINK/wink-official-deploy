@@ -1,0 +1,78 @@
+services:
+  nginx:
+    image: nginx:latest
+    build:
+      context: backend
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../deploy/log/nginx:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    links:
+      - frontend
+      - backend
+    networks:
+      - wink
+
+  frontend:
+    image: ioloolo/wink-official-frontend:latest
+    build:
+      context: frontend
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
+    container_name: frontend
+    restart: always
+    networks:
+      - wink
+
+  backend:
+    image: ioloolo/wink-official-backend:latest
+    build:
+      context: frontend
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
+    container_name: backend
+    restart: always
+    volumes:
+      - ../deploy/log/backend:/app/logs
+    env_file:
+      - path: ../deploy/config/backend.env
+        required: true
+    depends_on:
+      - mongo
+      - redis
+    links:
+      - mongo
+      - redis
+    networks:
+      - wink
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    volumes:
+      - ../deploy/mongo_data:/data/db
+    networks:
+      - wink
+
+  redis:
+    image: redis
+    container_name: redis
+    restart: always
+    networks:
+      - wink
+
+networks:
+  wink:

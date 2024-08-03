@@ -16,8 +16,8 @@ if [ ! -d "deploy" ]; then
   exit 1
 fi
 
-git checkout master
-git pull origin master
+git checkout develop
+git pull origin develop
 
 docker compose pull
 docker compose down

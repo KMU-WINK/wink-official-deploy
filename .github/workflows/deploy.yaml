@@ -74,8 +74,6 @@ jobs:
               git clone git@github.com:kmu-wink/wink-official-deploy.git
             fi
   
-            cd wink-official-deploy
-  
             if [ ! -d "$HOME/wink-official-deploy/deploy" ]; then
               echo "Error: deploy directory does not exist." >&2
               exit 1
@@ -88,6 +86,7 @@ jobs:
           username: ${{ env.SSH_USERNAME }}
           key: ${{ env.SSH_KEY }}
           script: |
+            cd wink-official-deploy
             [ "$(git symbolic-ref --short HEAD)" != "${{ github.ref_name }}" ] && git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
 
@@ -98,6 +97,7 @@ jobs:
           username: ${{ env.SSH_USERNAME }}
           key: ${{ env.SSH_KEY }}
           script: |
+            cd wink-official-deploy
             docker compose pull
             docker compose down
             docker compose up -d

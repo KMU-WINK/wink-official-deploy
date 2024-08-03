@@ -12,8 +12,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ../deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ../deploy/log/nginx:/var/log/nginx
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./deploy/log/nginx:/var/log/nginx
     depends_on:
       - frontend
       - backend
@@ -45,9 +45,9 @@ services:
     container_name: backend
     restart: always
     volumes:
-      - ../deploy/log/backend:/app/logs
+      - ./deploy/log/backend:/app/logs
     env_file:
-      - path: ../deploy/config/backend.env
+      - path: ./deploy/config/backend.env
         required: true
     depends_on:
       - mongo
@@ -63,7 +63,7 @@ services:
     container_name: mongo
     restart: always
     volumes:
-      - ../deploy/mongo_data:/data/db
+      - ./deploy/mongo_data:/data/db
     networks:
       - wink
 

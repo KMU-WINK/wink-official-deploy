@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     # if: github.actor == 'github-actions[bot]'
     steps:
-      - run: echo "${{ github.actor }}"
+      - run: echo "${{ github.actor }} and ${{ github.actor == 'github-actions[bot]' }}"
       # - name: Checkout repository
       #   uses: actions/checkout@v4
       #   with:

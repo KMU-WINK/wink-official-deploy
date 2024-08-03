@@ -7,6 +7,10 @@ on:
       - master
       - develop
 
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,88 +29,72 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build frontend
+      - name: Build image
         uses: docker/build-push-action@v6
-        if: github.actor == 'github-actions[bot]' && contains(github.event.head_commit.message, 'update') && contains(github.event.head_commit.message, 'frontend')
+        if: github.actor == 'github-actions[bot]'
+        env:
+          PROJECT_TYPE: ${{ contains(github.event.head_commit.message, 'frontend') && 'frontend' || 'backend' }}
         with:
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/wink-official-frontend:${{ github.ref_name }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/wink-official-${{ env.PROJECT_TYPE }}:${{ github.ref_name }}
           platforms: linux/amd64,linux/arm64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-frontend:buildcache-${{ github.ref_name }}
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-frontend:buildcache-${{ github.ref_name }}
-
-      - name: Build backend
-        uses: docker/build-push-action@v6
-        if: github.actor == 'github-actions[bot]' && contains(github.event.head_commit.message, 'update') && contains(github.event.head_commit.message, 'backend')
-        with:
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/wink-official-backend:${{ github.ref_name }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-frontend:buildcache-${{ github.ref_name }}
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-frontend:buildcache-${{ github.ref_name }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-${{ env.PROJECT_TYPE }}:buildcache-${{ github.ref_name }}
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wink-official-${{ env.PROJECT_TYPE }}:buildcache-${{ github.ref_name }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      SSH_HOST: ${{ github.ref_name == 'master' && secrets.SSH_MASTER_HOST || secrets.SSH_DEVELOP_HOST }}
+      SSH_USERNAME: ${{ github.ref_name == 'master' && secrets.SSH_MASTER_USERNAME || secrets.SSH_DEVELOP_USERNAME }}
+      SSH_KEY: ${{ github.ref_name == 'master' && secrets.SSH_MASTER_KEY || secrets.SSH_DEVELOP_KEY }}
     steps:
-      - name: SSH Connect (master)
+      - name: Check infrastructure
         uses: appleboy/ssh-action@v1.0.3
-        if: github.ref_name == 'master'
         with:
-          host: ${{ secrets.SSH_MASTER_HOST }}
-          username: ${{ secrets.SSH_MASTER_USERNAME }}
-          key: ${{ secrets.SSH_MASTER_KEY }}
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USERNAME }}
+          key: ${{ env.SSH_KEY }}
           script: |
-            if [ ! -d "./wink-official-deploy" ]; then
-              echo "Error: wink-official-deploy directory does not exist."
-              return 1
+            if ! command -v docker &> /dev/null; then
+              echo "Error: Docker is not installed." >&2
+              exit 1
             fi
-            
-            if [ ! -d "./deploy" ]; then
-              echo "Error: deploy directory does not exist."
-              return 1
+  
+            if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+              echo "A" > "$HOME/.ssh/id_ed25519"
+              chmod 600 "$HOME/.ssh/id_ed25519"
+              ssh-keyscan github.com >> "$HOME/.ssh/known_hosts"
             fi
-            
-            cd ./wink-official-deploy
-            
-            current_branch=$(git symbolic-ref --short HEAD)
-            if [ "$current_branch" != "master" ]; then
-              git checkout master
+  
+            if [ ! -d "wink-official-deploy" ]; then
+              git clone git@github.com:kmu-wink/wink-official-deploy.git
             fi
-            
-            git pull origin master
-            
-            docker compose pull
-            docker compose down
-            docker compose up -d
+  
+            cd wink-official-deploy
+  
+            if [ ! -d "$HOME/wink-official-deploy/deploy" ]; then
+              echo "Error: deploy directory does not exist." >&2
+              exit 1
+            fi
 
-      - name: SSH Connect (develop)
+      - name: Pull repository
         uses: appleboy/ssh-action@v1.0.3
-        if: github.ref_name == 'develop'
         with:
-          host: ${{ secrets.SSH_DEVELOP_HOST }}
-          username: ${{ secrets.SSH_DEVELOP_USERNAME }}
-          key: ${{ secrets.SSH_DEVELOP_KEY }}
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USERNAME }}
+          key: ${{ env.SSH_KEY }}
           script: |
-            if [ ! -d "./wink-official-deploy" ]; then
-              echo "Error: wink-official-deploy directory does not exist."
-              return 1
-            fi
-            
-            if [ ! -d "./deploy" ]; then
-              echo "Error: deploy directory does not exist."
-              return 1
-            fi
-            
-            cd ./wink-official-deploy
-            
-            current_branch=$(git symbolic-ref --short HEAD)
-            if [ "$current_branch" != "develop" ]; then
-              git checkout develop
-            fi
-            
-            git pull origin develop
-            
+            [ "$(git symbolic-ref --short HEAD)" != "${{ github.ref_name }}" ] && git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+      - name: Run container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USERNAME }}
+          key: ${{ env.SSH_KEY }}
+          script: |
             docker compose pull
             docker compose down
             docker compose up -d

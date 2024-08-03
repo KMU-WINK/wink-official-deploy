@@ -12,7 +12,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./deploy/config/nginx.conf:/etc/nginx/nginx.conf
       - ./deploy/log/nginx:/var/log/nginx
     depends_on:
       - frontend

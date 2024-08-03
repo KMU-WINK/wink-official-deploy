@@ -6,6 +6,9 @@ on:
     branches:
       - master
       - develop
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
 
 concurrency:
   group: deploy-${{ github.ref_name }}

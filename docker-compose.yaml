@@ -24,7 +24,7 @@ services:
       - wink
 
   frontend:
-    image: ioloolo/wink-official-frontend:latest
+    image: ioloolo/wink-official-frontend:develop
     build:
       context: frontend
       platforms:
@@ -36,7 +36,7 @@ services:
       - wink
 
   backend:
-    image: ioloolo/wink-official-backend:latest
+    image: ioloolo/wink-official-backend:develop
     build:
       context: frontend
       platforms:

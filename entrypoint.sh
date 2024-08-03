@@ -11,13 +11,7 @@ if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
   ssh-keyscan github.com >> "$HOME/.ssh/known_hosts"
 fi
 
-if [ ! -d "wink-official-deploy" ]; then
-  git clone git@github.com:kmu-wink/wink-official-deploy.git
-fi
-
-cd wink-official-deploy
-
-if [ ! -d "$HOME/wink-official-deploy/deploy" ]; then
+if [ ! -d "deploy" ]; then
   echo "Error: deploy directory does not exist." >&2
   exit 1
 fi
